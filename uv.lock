@@ -1,0 +1,18 @@
+version = 1
+requires-python = ">=3.12"
+
+[manifest]
+members = [
+    "core",
+    "llm-tools-server",
+]
+
+[[package]]
+name = "core"
+version = "0.1.0"
+source = { virtual = "src/core" }
+
+[[package]]
+name = "llm-tools-server"
+version = "0.1.0"
+source = { virtual = "." }
