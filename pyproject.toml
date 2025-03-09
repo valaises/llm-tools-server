@@ -4,7 +4,14 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiohttp>=3.11.13",
+    "fastapi>=0.115.11",
+    "pydantic>=2.10.6",
+    "termcolor>=2.5.0",
+    "uvicorn>=0.34.0",
+    "uvloop>=0.21.0",
+]
 
 [tool.uv.workspace]
 members = [
