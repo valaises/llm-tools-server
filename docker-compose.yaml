@@ -5,4 +5,6 @@ services:
     container_name: "llm_tools"
     env_file:
       - .env
+    ports:
+      - "7016:7016"
     restart: unless-stopped
