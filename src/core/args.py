@@ -19,7 +19,7 @@ def parse_args() -> Args:
     init_logger(True)
     parser = ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", default=7012, type=int)
+    parser.add_argument("--port", default=7016, type=int)
     parser.add_argument("--DEBUG", default=False, action="store_true")
 
     args = parser.parse_args()

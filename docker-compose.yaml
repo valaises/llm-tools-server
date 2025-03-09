@@ -1,0 +1,8 @@
+
+services:
+  app:
+    build: .
+    container_name: "llm_tools"
+    env_file:
+      - .env
+    restart: unless-stopped
