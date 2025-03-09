@@ -1,11 +1,10 @@
 
 import aiohttp
 
-from fastapi import Header, APIRouter, HTTPException
+from fastapi import Header, APIRouter
 from fastapi.responses import StreamingResponse
 
 from core.globals import LLM_PROXY_ADDRESS
-from core.logger import error
 from core.routers.chat_models import ChatPost
 
 
