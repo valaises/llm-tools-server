@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
-
+from core.routers.router_caps import CapsRouter
 from core.routers.router_chat_completions import ChatCompletionsRouter
 from core.routers.router_models import ModelsRouter
 
@@ -40,6 +40,7 @@ class App(FastAPI):
 
     def _routers(self):
         return [
+            CapsRouter(),
             ModelsRouter(),
             ChatCompletionsRouter(),
         ]
