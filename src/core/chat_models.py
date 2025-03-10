@@ -2,6 +2,34 @@ from typing import List, Optional, Union, Literal, Dict, Any
 from pydantic import BaseModel, Field, confloat, conint
 
 
+type ChatMessageAny = Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool]
+
+
+class ChatToolParameterProperty(BaseModel):
+    type: str
+    description: str
+    enum: List[str] = None
+
+
+class ChatToolParameters(BaseModel):
+    type: str
+    properties: Dict[str, ChatToolParameterProperty]
+    required: List[str]
+    additionalProperties: bool = False
+
+
+class ChatToolFunction(BaseModel):
+    name: str
+    description: str
+    parameters: ChatToolParameters
+    strict: bool = True
+
+
+class ChatTool(BaseModel):
+    type: str
+    function: ChatToolFunction
+
+
 class ChatMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
     content: Union[str, List[Any]]
@@ -36,7 +64,7 @@ class ToolCall(BaseModel):
     function:ToolCallFunction
 
 
-class ChatMessageToolCall(ChatMessage):
+class ChatMessageTool(ChatMessage):
     role: Literal["tool"]
     tool_call_id: Optional[str] = None
 
@@ -66,7 +94,7 @@ def default_modalities() -> List[str]:
 class ChatPost(BaseModel):
     # Required fields
     model: str
-    messages: List[Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageToolCall]]
+    messages: List[Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool]]
 
     # Optional fields with defaults
     temperature: Optional[confloat(ge=0, le=2)] = Field(default=1)
