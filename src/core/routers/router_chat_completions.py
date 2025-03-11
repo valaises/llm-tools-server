@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
 from core.chat_models import ChatPost
+from core.logger import info
 from core.tools.tools import execute_tools_if_needed
 
 
@@ -31,7 +32,7 @@ class ChatCompletionsRouter(APIRouter):
                 async with session.post(
                         f"{LLM_PROXY_ADDRESS}/chat/completions",
                         json=post.model_dump(),
-                        headers={"Authorization": authorization}
+                        headers={"Authorization": authorization or ""}
                 ) as response:
                     async for chunk in response.content:
                         if chunk:

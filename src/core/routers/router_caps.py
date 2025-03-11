@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 
 from fastapi import Header, APIRouter, Response
 
@@ -12,7 +13,7 @@ class CapsRouter(APIRouter):
         self.add_api_route("/v1/tools", self._tools, methods=["GET"])
 
     def _tools(self, _authorization: str = Header(None)):
-        data = get_tools_list()
+        data = [t.model_dump() for t in get_tools_list()]
 
         return Response(
             content=json.dumps(data, indent=2),
