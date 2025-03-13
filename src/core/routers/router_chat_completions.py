@@ -1,3 +1,5 @@
+import json
+import time
 
 import aiohttp
 
@@ -27,7 +29,22 @@ class ChatCompletionsRouter(APIRouter):
 
         remove_trail_tool_calls(messages)
 
+        post.messages = messages
+
         async def streamer():
+            prefix, postfix = "data: ", "\n\n"
+            if len(tool_res_messages):
+                yield prefix + json.dumps({
+                    "id": "XXX",
+                    "object": "tool_res_messages",
+                    "created": time.time(),
+                    "model": post.model,
+                    "choices": [],
+
+                    "tool_res_messages": [m.model_dump() for m in tool_res_messages],
+                }) + postfix
+                tool_res_messages.clear()
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                         f"{LLM_PROXY_ADDRESS}/chat/completions",

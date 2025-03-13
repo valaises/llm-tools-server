@@ -1,16 +1,16 @@
 import json
 from typing import List
 
-from .tool_abstract import Tool
-from .tool_ping_pong import ToolPingPong
-from .utils import build_tool_call
-from ..chat import get_unanswered_tool_calls
+from core.chat import get_unanswered_tool_calls
 from core.chat_models import (
-    ChatMessageAny,
+    ChatMessage,
     ChatTool,
     ChatMessageUser,
     ChatMessageTool
 )
+
+from core.tools.tool_abstract import Tool, build_tool_call
+from core.tools.tool_ping_pong import ToolPingPong
 
 
 TOOLS: List[Tool] = [
@@ -19,7 +19,7 @@ TOOLS: List[Tool] = [
 assert len({t.name for t in TOOLS}) == len(TOOLS), "TOOLS: names must be unique"
 
 
-def execute_tools_if_needed(messages: List[ChatMessageAny]) -> List[ChatMessageTool]:
+def execute_tools_if_needed(messages: List[ChatMessage]) -> List[ChatMessageTool]:
     """Execute pending tool calls from the chat message history.
 
     This function processes chat messages to find and execute any unanswered tool calls.
@@ -29,7 +29,7 @@ def execute_tools_if_needed(messages: List[ChatMessageAny]) -> List[ChatMessageT
     3. Executing each tool call if the tool exists and arguments are valid
 
     Args:
-        messages (List[ChatMessageAny]): A list of chat messages to process
+        messages (List[ChatMessage]): A list of chat messages to process
 
     Returns:
         List[ChatMessageTool]: A list of tool response messages. These can include:
@@ -40,14 +40,14 @@ def execute_tools_if_needed(messages: List[ChatMessageAny]) -> List[ChatMessageT
     """
 
     # Collect messages since last user message
-    messages_since_user = []
+    messages_since_last_user_msg = []
     for message in reversed(messages):
         if isinstance(message, ChatMessageUser):
             break
-        messages_since_user.insert(0, message)
+        messages_since_last_user_msg.insert(0, message)
 
     tool_res_messages = []
-    for tool_call in get_unanswered_tool_calls(messages_since_user):
+    for tool_call in get_unanswered_tool_calls(messages_since_last_user_msg):
         tool = [t for t in TOOLS if t.name == tool_call.function.name]
         if not tool:
             tool_res_messages.append(build_tool_call(
@@ -59,20 +59,20 @@ def execute_tools_if_needed(messages: List[ChatMessageAny]) -> List[ChatMessageT
 
         # assuming, there's always JSON in arguments
         try:
-            _ = json.loads(tool_call.function.arguments)
+            args = json.loads(tool_call.function.arguments)
         except json.JSONDecodeError:
             tool_res_messages.append(build_tool_call(
                 f"Error: invalid JSON in arguments: {tool_call.function.arguments}", tool_call
             ))
             continue
 
-        ok, msgs = tool.validate_tool_call(tool_call)
+        ok, msgs = tool.validate_tool_call_args(tool_call, args)
         tool_res_messages.extend(msgs)
 
         if not ok:
             continue
 
-        _ok, msgs = tool.execute(tool_call)
+        _ok, msgs = tool.execute(tool_call, args)
         tool_res_messages.extend(msgs)
 
     return tool_res_messages

@@ -1,6 +1,14 @@
-from typing import List
+from typing import List, Dict, Any
 
-from core.chat_models import ChatTool, ChatMessageAny, ToolCall
+from core.chat_models import ChatMessageTool, ToolCall, ChatMessage, ChatTool
+
+
+def build_tool_call(content: str, tool_call: ToolCall) -> ChatMessageTool:
+    return ChatMessageTool(
+        role="tool",
+        content=content,
+        tool_call_id=tool_call.id
+    )
 
 
 class Tool:
@@ -17,32 +25,34 @@ class Tool:
         """
         raise NotImplementedError("property 'name' is not implemented for tool")
 
-    def validate_tool_call(self, tool_call: ToolCall) -> (bool, List[ChatMessageAny]):
+    def validate_tool_call_args(self, tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         """
-        Validate that the provided tool call is compatible with this tool.
+        Validate that the provided tool call and arguments are compatible with this tool.
 
-        This method should verify that the provided ToolCall instance matches the expected
+        This method should verify that the provided ToolCall instance and arguments match the expected
         interface of the tool, including checking parameter types, required fields,
         and any other tool-specific validation rules.
 
         Args:
             tool_call (ToolCall): The tool call to validate, containing function
-                                 details and parameters.
+                                  details and parameters.
+            args (Dict[str, Any]): The arguments to validate, containing function
+                                   details and parameters.
 
         Returns:
             tuple: A pair containing:
                 - bool: Indicates whether the validation was successful (True) or failed (False)
-                - List[ChatMessageAny]: List of chat messages containing validation results or error details.
-                                       They will help model correct itself and execute tool correctly.
+                - List[ChatMessage]: List of chat messages containing validation results or error details.
+                                     They will help the model correct itself and execute the tool correctly.
                   Messages can be of type ChatMessage, ChatMessageSystem, ChatMessageUser,
                   ChatMessageAssistant, or ChatMessageTool.
 
         Raises:
             NotImplementedError: This is an abstract method that must be implemented by concrete tool classes.
         """
-        raise NotImplementedError(f"method 'validate_tool_call' is not implemented for tool {self.name}")
+        raise NotImplementedError(f"method 'validate_tool_call_args' is not implemented for tool {self.name}")
 
-    def execute(self, tool_call: ToolCall) -> (bool, List[ChatMessageAny]):
+    def execute(self, tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         """
         Execute the tool with the provided tool call and return execution results.
 
@@ -54,7 +64,7 @@ class Tool:
         Returns:
             tuple: A pair containing:
                 - bool: Success status of the execution
-                - List[ChatMessageAny]: List of chat messages generated during tool execution.
+                - List[ChatMessage]: List of chat messages generated during tool execution.
                   Messages can be of type ChatMessage, ChatMessageSystem, ChatMessageUser,
                   ChatMessageAssistant, or ChatMessageTool.
 

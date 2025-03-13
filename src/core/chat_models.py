@@ -2,7 +2,7 @@ from typing import List, Optional, Union, Literal, Dict, Any
 from pydantic import BaseModel, Field, confloat, conint
 
 
-type ChatMessageAny = Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool]
+type ChatMessage = Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool]
 
 
 class ChatToolParameterProperty(BaseModel):
@@ -30,27 +30,19 @@ class ChatTool(BaseModel):
     function: ChatToolFunction
 
 
-class ChatMessage(BaseModel):
+class ChatMessageBase(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
     content: Union[str, List[Any]]
 
 
-class ChatMessageSystem(ChatMessage):
+class ChatMessageSystem(ChatMessageBase):
     role: Literal["system", "developer"]
     name: Optional[str] = None
 
 
-class ChatMessageUser(ChatMessage):
+class ChatMessageUser(ChatMessageBase):
     role: Literal["user"]
     name: Optional[str] = None
-
-
-class ChatMessageAssistant(ChatMessage):
-    role: Literal["assistant"]
-    refusal: Optional[str] = None
-    name: Optional[str] = None
-    audio: Optional[Any] = None
-    tool_calls: Optional[List[Dict]] = None
 
 
 class ToolCallFunction(BaseModel):
@@ -61,10 +53,18 @@ class ToolCallFunction(BaseModel):
 class ToolCall(BaseModel):
     id: str
     type: Literal["function"]
-    function:ToolCallFunction
+    function: ToolCallFunction
 
 
-class ChatMessageTool(ChatMessage):
+class ChatMessageAssistant(ChatMessageBase):
+    role: Literal["assistant"]
+    refusal: Optional[str] = None
+    name: Optional[str] = None
+    audio: Optional[Any] = None
+    tool_calls: Optional[List[ToolCall]] = None
+
+
+class ChatMessageTool(ChatMessageBase):
     role: Literal["tool"]
     tool_call_id: Optional[str] = None
 

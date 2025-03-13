@@ -1,6 +1,6 @@
 import json
 
-from typing import List
+from typing import List, Dict, Any
 
 from core.chat_models import (
     ChatTool,
@@ -8,11 +8,10 @@ from core.chat_models import (
     ChatToolParameters,
     ChatToolParameterProperty,
     ToolCall,
-    ChatMessageAny
+    ChatMessage
 )
 
-from .utils import build_tool_call
-from .tool_abstract import Tool
+from .tool_abstract import Tool, build_tool_call
 
 
 class ToolPingPong(Tool):
@@ -20,18 +19,18 @@ class ToolPingPong(Tool):
     def name(self) -> str:
         return "ping_pong"
 
-    def validate_tool_call(self, tool_call: ToolCall) -> (bool, List[ChatMessageAny]):
-        args = json.loads(tool_call.function.arguments)
+    def validate_tool_call_args(self, tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         message = args.get("message")
-        
+
         if not isinstance(message, str):
             return False, [build_tool_call(f"Error: Expected type message str, got '{type(message)}'", tool_call)]
 
         if message != "ping":
             return False, [build_tool_call(f"Error: Expected message 'ping', got '{message}'", tool_call)]
 
+        return True, []
 
-    def execute(self, tool_call: ToolCall) -> (bool, List[ChatMessageAny]):
+    def execute(self, tool_call: ToolCall, _args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         return True, [build_tool_call("pong", tool_call)]
 
     def as_chat_tool(self) -> ChatTool:

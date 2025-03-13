@@ -2,7 +2,7 @@ from typing import List, Iterator
 
 from core.globals import MESSAGES_TOK_LIMIT
 from core.chat_models import (
-    ChatMessageAny,
+    ChatMessage,
     ChatMessageSystem,
     ChatMessageTool,
     ChatMessageAssistant,
@@ -10,11 +10,11 @@ from core.chat_models import (
 )
 
 
-def count_tokens(message: ChatMessageAny) -> int:
+def count_tokens(message: ChatMessage) -> int:
     return int(max(1, len(str(message.content))) / 4.)
 
 
-def limit_messages(messages: List[ChatMessageAny]) -> List[ChatMessageAny]:
+def limit_messages(messages: List[ChatMessage]) -> List[ChatMessage]:
     new_messages = []
 
     take_messages = [
@@ -44,7 +44,7 @@ def limit_messages(messages: List[ChatMessageAny]) -> List[ChatMessageAny]:
     return new_messages
 
 
-def get_unanswered_tool_calls(messages: List[ChatMessageAny]) -> Iterator[ToolCall]:
+def get_unanswered_tool_calls(messages: List[ChatMessage]) -> Iterator[ToolCall]:
     # Get all tool call IDs from responses
     tool_messages: List[ChatMessageTool] = [
         m for m in messages if isinstance(m, ChatMessageTool)
@@ -61,7 +61,7 @@ def get_unanswered_tool_calls(messages: List[ChatMessageAny]) -> Iterator[ToolCa
                     yield tool_call
 
 
-def remove_trail_tool_calls(messages: List[ChatMessageAny]):
+def remove_trail_tool_calls(messages: List[ChatMessage]):
     # Get all unanswered tool calls
     unanswered_tool_calls = list(get_unanswered_tool_calls(messages))
     unanswered_tool_call_ids = {tool_call.id for tool_call in unanswered_tool_calls}
@@ -73,3 +73,5 @@ def remove_trail_tool_calls(messages: List[ChatMessageAny]):
                 tool_call for tool_call in m.tool_calls
                 if tool_call.id not in unanswered_tool_call_ids
             ]
+            if len(m.tool_calls) == 0:
+                m.tool_calls = None
