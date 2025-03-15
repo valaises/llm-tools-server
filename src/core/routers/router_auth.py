@@ -28,7 +28,7 @@ class AuthItem:
 @dataclass
 class CacheAuthItem:
     item: AuthItem
-    cached_ts: float = time.time()
+    cached_ts: float
 
 
 def auth_s_left(item: CacheAuthItem):
@@ -72,7 +72,7 @@ class AuthRouter(APIRouter):
 
         if "auth" in a_item:
             item = AuthItem(**a_item["auth"])
-            self.cache[api_key] = CacheAuthItem(item=item)
+            self.cache[api_key] = CacheAuthItem(item=item, cached_ts=time.time())
             info("fetch -> AUTH -> cache")
             return item
 

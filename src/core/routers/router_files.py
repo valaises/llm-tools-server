@@ -33,7 +33,6 @@ class FilesRouter(AuthRouter):
         if not auth:
             return self._auth_error_response()
 
-        info(f"searching files for user_id: {auth.user_id}")
         files = await self._files_repository.get_user_files(auth.user_id)
 
         content = {
@@ -60,7 +59,7 @@ class FilesRouter(AuthRouter):
             )
 
         # Create a unique hash based on the original filename and a random UUID
-        random_hash = hashlib.sha256(f"{file_name}{uuid.uuid4()}".encode()).hexdigest()
+        random_hash = hashlib.sha256(f"{file_name}{uuid.uuid4()}".encode()).hexdigest() # type: ignore
 
         # Keep the original file extension if it exists
         original_extension = Path(file_name).suffix
