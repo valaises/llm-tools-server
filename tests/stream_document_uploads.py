@@ -5,7 +5,7 @@ import time
 
 
 def stream_upload_document(file_path):
-    upload_url = "https://llmtools.home.valerii.cc/v1/knowledge/upload"
+    upload_url = "https://llmtools.home.valerii.cc/v1/files/upload"
 
     file_name = file_path.name
     file_size = os.path.getsize(file_path)
@@ -14,6 +14,7 @@ def stream_upload_document(file_path):
     headers = {
         'Content-Type': 'application/octet-stream',
         'X-File-Name': file_name,
+        'X-File-Role': 'document',
         'Authorization': f"Bearer {key}"
     }
 
@@ -45,6 +46,7 @@ def stream_upload_document(file_path):
             data=file_generator(),
             stream=True
         )
+        print(response.content)
         print("\nUpload completed")
 
         response.raise_for_status()

@@ -5,8 +5,10 @@ import uvloop
 import uvicorn
 
 from core.args import parse_args
+from core.globals import BASE_DIR
 from core.logger import init_logger, info
 from core.app import App
+from core.repositories.files_repository import FilesRepository
 
 
 class Server(uvicorn.Server):
@@ -44,10 +46,14 @@ def main():
     init_logger(args.DEBUG)
     info("Logger initialized")
 
+    db_dir = BASE_DIR / "db"
+    db_dir.mkdir(parents=True, exist_ok=True)
 
+    files_repository = FilesRepository(db_dir / "files.db")
 
     app = App(
-        docs_url=None,
+        files_repository,
+        docs_url="/docs",
         redoc_url=None
     )
 

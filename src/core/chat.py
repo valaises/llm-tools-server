@@ -28,7 +28,7 @@ def limit_messages(messages: List[ChatMessage]) -> List[ChatMessage]:
     messages.reverse()
 
     for (message, take) in zip(messages, take_messages):
-        if take:
+        if take == True:
             new_messages.append(message)
             continue
 

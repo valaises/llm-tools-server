@@ -52,7 +52,7 @@ class AuthRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self.cache = auth_cache
 
-    async def _check_auth(self, authorization: Header = None) -> Optional[Dict]:
+    async def _check_auth(self, authorization: Header = None) -> Optional[AuthItem]:
         if not authorization:
             return
 
@@ -66,7 +66,7 @@ class AuthRouter(APIRouter):
             s_left = auth_s_left(item)
             if s_left > 0:
                 info(f"cache -> AUTH; exp:{s_left :.1f}s")
-                return item
+                return item.item
 
         a_item = await fetch_auth_item(authorization)
 
@@ -74,7 +74,7 @@ class AuthRouter(APIRouter):
             item = AuthItem(**a_item["auth"])
             self.cache[api_key] = CacheAuthItem(item=item)
             info("fetch -> AUTH -> cache")
-            return a_item
+            return item
 
         return None
 

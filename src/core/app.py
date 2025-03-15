@@ -2,9 +2,10 @@ from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
+from core.repositories.files_repository import FilesRepository
 from core.routers.router_caps import CapsRouter
 from core.routers.router_chat_completions import ChatCompletionsRouter
-from core.routers.router_knowledge import KnowledgeRouter
+from core.routers.router_files import FilesRouter
 from core.routers.router_models import ModelsRouter
 
 
@@ -14,12 +15,15 @@ __all__ = ["App"]
 class App(FastAPI):
     def __init__(
             self,
+            files_repository: FilesRepository,
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
+        self.auth_cache = {}
+        self.files_repository = files_repository
+        
         self._setup_middlewares()
         self.add_event_handler("startup", self._startup_events)
-        self.auth_cache = {}
 
         for router in self._routers():
             self.include_router(router)
@@ -41,7 +45,10 @@ class App(FastAPI):
         return [
             CapsRouter(self.auth_cache),
             ChatCompletionsRouter(self.auth_cache),
-            KnowledgeRouter(self.auth_cache),
+            FilesRouter(
+                self.auth_cache,
+                self.files_repository,
+            ),
 
             ModelsRouter()
         ]
