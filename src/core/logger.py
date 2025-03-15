@@ -1,42 +1,105 @@
 import sys
 import logging
 
+from datetime import datetime
+from pathlib import Path
 from termcolor import colored
 
+from core.globals import BASE_DIR
 
-__all__ = ['init_logger', 'info', 'error', 'warn', 'debug']
+__all__ = ['init_logger', 'info', 'error', 'warn', 'debug', 'exception']
+
+logger = logging.getLogger("SBACK")
+info = logger.info
+error = logger.error
+warn = logger.warning
+debug = logger.debug
+exception = logger.exception
+
+FMT = '%(asctime)s %(levelname)s [%(filename)s] %(message)s'
+DATE_FMT = '%Y%m%d %H:%M:%S'
 
 
-info = logging.getLogger("LLTS").info
-error = logging.getLogger("LLTS").error
-warn = logging.getLogger("LLTS").warning
-debug = logging.getLogger("LLTS").debug
+def init_logger(debug_on: bool) -> None:
+    """Initialize the application logger with console and file handlers.
 
+    Args:
+        debug_on: Whether to enable debug logging
+    """
 
-def init_logger(debug_on: bool):
-    class LoggerHandler(logging.Handler):
-        def emit(self, record):
+    class ColoredConsoleHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            # Skip debug messages if debug mode is off
             if not debug_on and record.levelno == logging.DEBUG:
                 return
 
-            level_name = record.levelname
-            if record.levelno == logging.ERROR:
-                level_name = colored(level_name, 'red')
-            elif record.levelno == logging.WARNING:
-                level_name = colored(level_name, 'yellow')
+            # Color the level name based on severity
+            level_colors = {
+                logging.ERROR: 'red',
+                logging.WARNING: 'yellow'
+            }
 
+            # Save original level name
             original_levelname = record.levelname
-            record.levelname = level_name
+
+            # Apply color if needed
+            if record.levelno in level_colors:
+                record.levelname = colored(record.levelname, level_colors[record.levelno])
+
+            # Format and output the log entry
             log_entry = self.format(record)
             record.levelname = original_levelname
 
-            sys.stderr.write(log_entry)
-            sys.stderr.write("\n")
+            # Write to stderr and flush
+            sys.stderr.write(f"{log_entry}\n")
             sys.stderr.flush()
 
+    log_path = BASE_DIR / "logs"
+    log_path.mkdir(parents=True, exist_ok=True)
+
+    class DailyFileHandler(logging.Handler):
+        def __init__(self, log_dir, encoding='utf-8'):
+            super().__init__()
+            self.log_dir = Path(log_dir)
+            self.encoding = encoding
+            self.current_date = None
+            self.file_handler = None
+            # Initialize with the current file handler
+            self._update_file_handler()
+
+        def _update_file_handler(self):
+            today = datetime.now().strftime("%Y%m%d")
+
+            if today != self.current_date or self.file_handler is None:
+                if self.file_handler:
+                    self.file_handler.close()
+
+                log_file_path = self.log_dir / f"{today}.log"
+                self.file_handler = logging.FileHandler(
+                    filename=log_file_path,
+                    encoding=self.encoding
+                )
+                self.file_handler.setFormatter(self.formatter)
+                self.current_date = today
+
+        def emit(self, record):
+            self._update_file_handler()
+            self.file_handler.emit(record)
+
+        def setFormatter(self, formatter):
+            super().setFormatter(formatter)
+            if self.file_handler:
+                self.file_handler.setFormatter(formatter)
+
+    file_handler = DailyFileHandler(log_path, encoding="utf-8")
+
+    file_handler.setFormatter(logging.Formatter(
+        FMT, DATE_FMT
+    ))
+
     logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s %(levelname)s %(message)s',
-        datefmt='%Y%m%d %H:%M:%S',
-        handlers=[LoggerHandler()]
+        level=logging.DEBUG if debug_on else logging.INFO,
+        format=FMT,
+        datefmt=DATE_FMT,
+        handlers=[ColoredConsoleHandler(), file_handler]
     )

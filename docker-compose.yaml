@@ -7,4 +7,7 @@ services:
       - .env
     ports:
       - "7016:7016"
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
     restart: unless-stopped
