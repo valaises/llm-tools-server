@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from core.globals import UPLOADS_DIR
-from core.logger import exception, info
+from core.logger import exception
 from core.repositories.files_repository import FilesRepository, FileItem
 from core.routers.router_auth import AuthRouter
 
@@ -109,7 +109,6 @@ class FilesRouter(AuthRouter):
                 user_id=auth.user_id,
                 created_at=datetime.now(),
             )
-            info(file_item)
 
             if not await self._files_repository.create_file(file_item):
                 raise Exception("Failed to save file information to database")
