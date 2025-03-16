@@ -16,6 +16,7 @@ class FileItem(BaseModel):
     user_id: int
     created_at: datetime
     file_type: str = ""
+    processing_status: str = ""
 
 
 class FilesRepository(AbstractRepository):
@@ -25,7 +26,7 @@ class FilesRepository(AbstractRepository):
 
     def _init_db(self):
         with self._get_db_connection() as conn:
-            # Check if file_type column exists
+            # Check if columns exist
             cursor = conn.execute("PRAGMA table_info(uploaded_files)")
             columns = [info[1] for info in cursor.fetchall()]
 
@@ -39,13 +40,18 @@ class FilesRepository(AbstractRepository):
                 file_size INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 created_at TIMESTAMP NOT NULL,
-                file_type TEXT DEFAULT ''
+                file_type TEXT DEFAULT '',
+                processing_status TEXT DEFAULT ''
             )
             """)
 
             # Add file_type column if it doesn't exist
             if 'file_type' not in columns and 'uploaded_files' in columns:
                 conn.execute("ALTER TABLE uploaded_files ADD COLUMN file_type TEXT DEFAULT ''")
+
+            # Add processing_status column if it doesn't exist
+            if 'processing_status' not in columns and 'uploaded_files' in columns:
+                conn.execute("ALTER TABLE uploaded_files ADD COLUMN processing_status TEXT DEFAULT ''")
 
             conn.commit()
 
@@ -55,8 +61,8 @@ class FilesRepository(AbstractRepository):
                 conn.execute(
                     """
                     INSERT INTO uploaded_files 
-                    (file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type, processing_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         file.file_name,
@@ -66,7 +72,8 @@ class FilesRepository(AbstractRepository):
                         file.file_size,
                         file.user_id,
                         file.created_at.isoformat(),
-                        file.file_type
+                        file.file_type,
+                        file.processing_status
                     )
                 )
                 conn.commit()
@@ -81,7 +88,7 @@ class FilesRepository(AbstractRepository):
                     """
                     UPDATE uploaded_files
                     SET file_name_orig = ?, file_ext = ?, 
-                        file_role = ?, file_size = ?, user_id = ?, created_at = ?, file_type = ?
+                        file_role = ?, file_size = ?, user_id = ?, created_at = ?, file_type = ?, processing_status = ?
                     WHERE file_name = ?
                     """,
                     (
@@ -92,6 +99,7 @@ class FilesRepository(AbstractRepository):
                         file.user_id,
                         file.created_at.isoformat(),
                         file.file_type,
+                        file.processing_status,
                         file_name
                     )
                 )
@@ -116,7 +124,7 @@ class FilesRepository(AbstractRepository):
         with self._get_db_connection() as conn:
             cursor = conn.execute(
                 """
-                SELECT file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type
+                SELECT file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type, processing_status
                 FROM uploaded_files
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -134,57 +142,8 @@ class FilesRepository(AbstractRepository):
                     file_size=row[4],
                     user_id=row[5],
                     created_at=datetime.fromisoformat(row[6]),
-                    file_type=row[7] if len(row) > 7 else ""
-                ))
-
-            return files
-
-    def _get_file_by_name_sync(self, file_name: str) -> FileItem | None:
-        with self._get_db_connection() as conn:
-            cursor = conn.execute(
-                """
-                SELECT file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type
-                FROM uploaded_files
-                WHERE file_name = ?
-                """,
-                (file_name,)
-            )
-
-            row = cursor.fetchone()
-            if row:
-                return FileItem(
-                    file_name=row[0],
-                    file_name_orig=row[1],
-                    file_ext=row[2],
-                    file_role=row[3],
-                    file_size=row[4],
-                    user_id=row[5],
-                    created_at=datetime.fromisoformat(row[6]),
-                    file_type=row[7] if len(row) > 7 else ""
-                )
-            return None
-
-    def _get_all_files_sync(self) -> List[FileItem]:
-        with self._get_db_connection() as conn:
-            cursor = conn.execute(
-                """
-                SELECT file_name, file_name_orig, file_ext, file_role, file_size, user_id, created_at, file_type
-                FROM uploaded_files
-                ORDER BY created_at DESC
-                """
-            )
-
-            files = []
-            for row in cursor.fetchall():
-                files.append(FileItem(
-                    file_name=row[0],
-                    file_name_orig=row[1],
-                    file_ext=row[2],
-                    file_role=row[3],
-                    file_size=row[4],
-                    user_id=row[5],
-                    created_at=datetime.fromisoformat(row[6]),
-                    file_type=row[7] if len(row) > 7 else ""
+                    file_type=row[7] if len(row) > 7 else "",
+                    processing_status=row[8] if len(row) > 8 else ""
                 ))
 
             return files
@@ -200,9 +159,3 @@ class FilesRepository(AbstractRepository):
 
     async def get_user_files(self, user_id: int) -> List[FileItem]:
         return await self._run_in_thread(self._get_user_files_sync, user_id)
-
-    async def get_file_by_name(self, file_name: str) -> FileItem | None:
-        return await self._run_in_thread(self._get_file_by_name_sync, file_name)
-
-    async def get_all_files(self) -> List[FileItem]:
-        return await self._run_in_thread(self._get_all_files_sync)
