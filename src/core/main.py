@@ -1,20 +1,31 @@
 import signal
 
 import asyncio
+import threading
+
 import uvloop
 import uvicorn
 
 from core.args import parse_args
 from core.globals import BASE_DIR
-from core.logger import init_logger, info
+from core.logger import init_logger, info, warn
 from core.app import App
 from core.repositories.files_repository import FilesRepository
+
+from doc_search.extactor.worker import spawn_worker as spawn_worker_doc_search
 
 
 class Server(uvicorn.Server):
     """Custom uvicorn Server with graceful shutdown"""
 
-    def __init__(self, app, host: str, port: int):
+    def __init__(
+            self,
+            app,
+            host: str,
+            port: int,
+            doc_s_stop: threading.Event,
+            doc_s_thread: threading.Thread,
+    ):
         config = uvicorn.Config(
             app,
             host=host,
@@ -23,9 +34,17 @@ class Server(uvicorn.Server):
             log_config=None
         )
         super().__init__(config)
+        self.doc_s_stop = doc_s_stop
+        self.doc_s_thread = doc_s_thread
 
     async def shutdown(self, sockets=None):
         """Graceful shutdown with stats worker cleanup"""
+
+        if self.doc_s_stop and self.doc_s_thread:
+            self.doc_s_stop.set()
+            self.doc_s_thread.join(timeout=5)
+            if self.doc_s_thread.is_alive():
+                warn("doc_s_thread didn't finish in time")
 
         # Shutdown uvicorn
         await super().shutdown(sockets=sockets)
@@ -50,6 +69,7 @@ def main():
     db_dir.mkdir(parents=True, exist_ok=True)
 
     files_repository = FilesRepository(db_dir / "files.db")
+    doc_s_stop, doc_s_thread = spawn_worker_doc_search(files_repository)
 
     app = App(
         files_repository,
@@ -63,6 +83,8 @@ def main():
         app=app,
         host=args.host,
         port=args.port,
+        doc_s_stop=doc_s_stop,
+        doc_s_thread=doc_s_thread,
     )
 
     setup_signal_handlers(server)
