@@ -5,6 +5,28 @@ from pydantic import BaseModel, Field, confloat, conint
 type ChatMessage = Union[ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool]
 
 
+def model_validate_chat_message(obj: Union[Dict[str, Any], BaseModel]) -> ChatMessage:
+    """Validate and convert a dictionary or model to a ChatMessage."""
+    if isinstance(obj, (ChatMessageSystem, ChatMessageUser, ChatMessageAssistant, ChatMessageTool)):
+        return obj
+
+    if not isinstance(obj, dict):
+        obj = obj.model_dump()
+
+    role = obj.get("role")
+
+    if role in ["system", "developer"]:
+        return ChatMessageSystem.model_validate(obj)
+    elif role == "user":
+        return ChatMessageUser.model_validate(obj)
+    elif role == "assistant":
+        return ChatMessageAssistant.model_validate(obj)
+    elif role == "tool":
+        return ChatMessageTool.model_validate(obj)
+    else:
+        raise ValueError(f"Unknown role: {role}")
+
+
 class ChatToolParameterProperty(BaseModel):
     type: str
     description: str
@@ -30,9 +52,34 @@ class ChatTool(BaseModel):
     function: ChatToolFunction
 
 
+class ChatMessageContentItemText(BaseModel):
+    text: str
+    type: str
+
+
+class ChatMessageContentItemImage(BaseModel):
+    image_url: str
+    type: str
+
+
+class ChatMessageContentItemAudio(BaseModel):
+    input_audio: str
+    type: Literal["input_audio"]
+
+
+class ChatMessageContentItemFile(BaseModel):
+    file: str
+    type: Literal["file"]
+
+
 class ChatMessageBase(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
-    content: Union[str, List[Any]]
+    content: Union[str, List[Union[
+        ChatMessageContentItemText,
+        ChatMessageContentItemImage,
+        ChatMessageContentItemAudio,
+        ChatMessageContentItemFile
+    ]]]
 
 
 class ChatMessageSystem(ChatMessageBase):

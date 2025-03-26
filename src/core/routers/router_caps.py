@@ -4,6 +4,7 @@ from fastapi import Header, Response
 
 from core.routers.router_auth import AuthRouter
 from core.tools.tools import get_tools_list
+from mcpl.wrappers import get_mcpl_tools
 
 
 class CapsRouter(AuthRouter):
@@ -16,8 +17,13 @@ class CapsRouter(AuthRouter):
         if not await self._check_auth(authorization):
             return self._auth_error_response()
 
+        mcpl_tools = await get_mcpl_tools()
+
         content = {
-            "tools": [t.model_dump() for t in get_tools_list()]
+            "tools": [t.model_dump() for t in [
+                *get_tools_list(),
+                *mcpl_tools
+            ]]
         }
 
         return Response(

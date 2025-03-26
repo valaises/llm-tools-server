@@ -50,9 +50,6 @@ def execute_tools_if_needed(messages: List[ChatMessage]) -> List[ChatMessageTool
     for tool_call in get_unanswered_tool_calls(messages_since_last_user_msg):
         tool = [t for t in TOOLS if t.name == tool_call.function.name]
         if not tool:
-            tool_res_messages.append(build_tool_call(
-                f"Error: tool with name '{tool_call.function.name}' does not exist", tool_call
-            ))
             continue
 
         tool = tool[0]

@@ -18,9 +18,9 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "src/core",
-    "src/doc_search"
+    "src/mcpl",
 ]
 
 [tool.uv.sources]
 core = { workspace = true }
-doc_search = { workspace = true }
+mcpl = { workspace = true }

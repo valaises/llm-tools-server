@@ -8,9 +8,25 @@ from fastapi.responses import StreamingResponse
 
 from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
-from core.chat_models import ChatPost
+from core.chat_models import ChatPost, ChatMessageSystem
+from core.logger import info
 from core.routers.router_auth import AuthRouter
 from core.tools.tools import execute_tools_if_needed
+from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute
+
+
+async def compose_system_message():
+    system = "You are a helpful AI assistant."
+    # todo: use cache
+    mcp_props = await get_mcpl_tool_props()
+
+    if mcp_props:
+        how_to_use_tools = '\n\n'.join([
+            p.system_prompt for p in mcp_props if p.system_prompt
+        ])
+        system = f"{system}\nHow to use TOOLS:\n{how_to_use_tools}"
+
+    return ChatMessageSystem(role="system", content=system)
 
 
 class ChatCompletionsRouter(AuthRouter):
@@ -25,8 +41,14 @@ class ChatCompletionsRouter(AuthRouter):
 
         messages = post.messages
 
+        if messages and messages[0].role not in ["system", "developer"]:
+            system_message = await compose_system_message()
+            messages = [system_message, *messages]
+
         tool_res_messages = execute_tools_if_needed(messages)
-        messages = [*messages, *tool_res_messages]
+        tool_res_messages_mcpl = await mcpl_tools_execute(1, messages)
+
+        messages = [*messages, *tool_res_messages, *tool_res_messages_mcpl]
 
         messages = limit_messages(messages)
 
@@ -44,7 +66,10 @@ class ChatCompletionsRouter(AuthRouter):
                     "model": post.model,
                     "choices": [],
 
-                    "tool_res_messages": [m.model_dump() for m in tool_res_messages],
+                    "tool_res_messages": [
+                        m.model_dump()
+                        for m in [*tool_res_messages, *tool_res_messages_mcpl]
+                    ],
                 }) + postfix
                 tool_res_messages.clear()
 
