@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aiofiles>=24.1.0",
     "aiohttp>=3.11.13",
+    "chat-tools",
     "fastapi>=0.115.11",
     "pydantic>=2.10.6",
     "requests>=2.32.3",
@@ -24,3 +25,4 @@ members = [
 [tool.uv.sources]
 core = { workspace = true }
 mcpl = { workspace = true }
+chat-tools = { git = "https://github.com/valaises/chat_tools.git" }

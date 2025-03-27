@@ -1,9 +1,9 @@
-from typing import Optional, Dict, List
+from typing import Optional, List
 
 import aiohttp
 from pydantic import BaseModel
 
-from core.chat_models import ChatTool, ChatMessage, model_validate_chat_message
+from chat_tools.chat_models import ChatTool, ChatMessage, model_validate_chat_message
 from core.logger import error, exception
 from mcpl.mcpl_base import mcpl_servers
 

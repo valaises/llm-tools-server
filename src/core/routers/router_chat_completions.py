@@ -8,8 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
-from core.chat_models import ChatPost, ChatMessageSystem
-from core.logger import info
+from chat_tools.chat_models import ChatPost, ChatMessageSystem
 from core.routers.router_auth import AuthRouter
 from core.tools.tools import execute_tools_if_needed
 from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute

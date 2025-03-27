@@ -1,8 +1,7 @@
-import json
 
 from typing import List, Dict, Any
 
-from core.chat_models import (
+from chat_tools.chat_models import (
     ChatTool,
     ChatToolFunction,
     ChatToolParameters,

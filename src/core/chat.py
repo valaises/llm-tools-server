@@ -1,7 +1,7 @@
 from typing import List, Iterator
 
 from core.globals import MESSAGES_TOK_LIMIT
-from core.chat_models import (
+from chat_tools.chat_models import (
     ChatMessage,
     ChatMessageSystem,
     ChatMessageTool,

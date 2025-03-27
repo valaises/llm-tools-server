@@ -2,7 +2,7 @@ import json
 from typing import List
 
 from core.chat import get_unanswered_tool_calls
-from core.chat_models import (
+from chat_tools.chat_models import (
     ChatMessage,
     ChatTool,
     ChatMessageUser,

@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from core.chat_models import ChatMessageTool, ToolCall, ChatMessage, ChatTool
+from chat_tools.chat_models import ChatMessageTool, ToolCall, ChatMessage, ChatTool
 
 
 def build_tool_call(content: str, tool_call: ToolCall) -> ChatMessageTool:
