@@ -3,7 +3,6 @@ import time
 
 import aiohttp
 
-from fastapi import Header
 from fastapi.responses import StreamingResponse
 
 from core.chat import limit_messages, remove_trail_tool_calls
@@ -13,6 +12,7 @@ from core.routers.router_auth import AuthRouter
 from core.routers.schemas import AUTH_HEADER
 from core.tools.tools import execute_tools_if_needed
 from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
+from mcpl.servers import get_active_servers
 from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute
 
 
@@ -46,7 +46,7 @@ class ChatCompletionsRouter(AuthRouter):
         if not auth:
             return self._auth_error_response()
 
-        servers = await self._mcpl_servers_repository.get_user_servers(auth.user_id)
+        servers = await get_active_servers(self._mcpl_servers_repository, auth.user_id)
 
         messages = post.messages
 

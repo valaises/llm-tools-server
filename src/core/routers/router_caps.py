@@ -10,6 +10,7 @@ from core.routers.router_auth import AuthRouter
 from core.routers.schemas import RESPONSES, error_constructor, ErrorResponse, AUTH_HEADER
 from core.tools.tools import get_tools_list
 from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
+from mcpl.servers import get_active_servers
 from mcpl.wrappers import get_mcpl_tools
 
 
@@ -79,7 +80,7 @@ class CapsRouter(AuthRouter):
             if not auth:
                 return self._auth_error_response()
 
-            servers = await self._mcpl_servers_repository.get_user_servers(auth.user_id)
+            servers = await get_active_servers(self._mcpl_servers_repository, auth.user_id)
             mcpl_tools = await get_mcpl_tools(servers)
 
             return ToolsResponse(
