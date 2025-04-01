@@ -1,19 +1,21 @@
 import re
-import json
 import time
-import aiohttp
 
 from dataclasses import dataclass
-
 from typing import Optional, Dict, Any
+
+import aiohttp
 
 from fastapi import APIRouter, Header, Response
 
 from core.globals import LLM_PROXY_ADDRESS
 from core.logger import info
-
+from core.routers.schemas import error_constructor
 
 CACHE_ITEM_EXPIRATION_TIME = 360
+
+
+MATCH_BEARER = re.compile(r"^Bearer\s+(.+)$")
 
 
 @dataclass
@@ -56,7 +58,7 @@ class AuthRouter(APIRouter):
         if not authorization:
             return
 
-        match = re.match(r"^Bearer\s+(.+)$", authorization)
+        match = MATCH_BEARER.match(authorization)
         if not match:
             return
 
@@ -78,15 +80,10 @@ class AuthRouter(APIRouter):
 
         return None
 
-    def _auth_error_response(self):
-        return Response(
-            status_code=401,
-            content=json.dumps({
-                "error": {
-                    "message": "Invalid authentication",
-                    "type": "invalid_request_error",
-                    "code": "invalid_api_key"
-                }
-            }),
-            media_type="application/json"
+    def _auth_error_response(self) -> Response:
+        return error_constructor(
+            message="Invalid authentication",
+            error_type="invalid_request_error",
+            code="invalid_api_key",
+            status_code=401
         )

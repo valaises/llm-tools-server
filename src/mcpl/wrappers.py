@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from chat_tools.chat_models import ChatTool, ChatMessage, model_validate_chat_message
 from core.logger import error, exception
-from mcpl.mcpl_base import mcpl_servers
+from mcpl.repositories.repo_mcpl_servers import MCPLServer
 
 
 class ToolProps(BaseModel):
@@ -18,11 +18,11 @@ class ToolPropsResponse(BaseModel):
     props: List[ToolProps]
 
 
-async def get_mcpl_tools(c_session: Optional[aiohttp.ClientSession] = None) -> List[ChatTool]:
+async def get_mcpl_tools(servers: List[MCPLServer], c_session: Optional[aiohttp.ClientSession] = None) -> List[ChatTool]:
     c_session = c_session or aiohttp.ClientSession()
 
     tools = []
-    for server in mcpl_servers():
+    for server in servers:
         tools_url = f"{server.address}/tools"
         try:
             async with c_session as session:
@@ -32,18 +32,18 @@ async def get_mcpl_tools(c_session: Optional[aiohttp.ClientSession] = None) -> L
                         server_tools = [ChatTool.model_validate(tool) for tool in server_tools_data["tools"]]
                         tools.extend(server_tools)
                     else:
-                        error(f"Failed to fetch tools from {server.name}: {response.status}")
+                        error(f"Failed to fetch tools from {server.address}: {response.status}")
         except Exception as e:
-            exception(f"Error fetching tools from {server.name}: {str(e)}")
+            exception(f"Error fetching tools from {server.address}: {str(e)}")
 
     return tools
 
 
-async def get_mcpl_tool_props(c_session: Optional[aiohttp.ClientSession] = None) -> List[ToolProps]:
+async def get_mcpl_tool_props(servers: List[MCPLServer], c_session: Optional[aiohttp.ClientSession] = None) -> List[ToolProps]:
     c_session = c_session or aiohttp.ClientSession()
 
     props = []
-    for server in mcpl_servers():
+    for server in servers:
         props_url = f"{server.address}/tools-props"
         try:
             async with c_session as session:
@@ -53,14 +53,15 @@ async def get_mcpl_tool_props(c_session: Optional[aiohttp.ClientSession] = None)
                         tool_props = ToolPropsResponse.model_validate(tool_props_data)
                         props.extend(tool_props.props)
                     else:
-                        error(f"Failed to fetch tool props from {server.name}: {response.status}")
+                        error(f"Failed to fetch tool props from {server.address}: {response.status}")
         except Exception as e:
-            exception(f"Error fetching tool props from {server.name}: {str(e)}")
+            exception(f"Error fetching tool props from {server.address}: {str(e)}")
 
     return props
 
 
 async def mcpl_tools_execute(
+        servers: List[MCPLServer],
         user_id: int,
         messages: List[ChatMessage],
         c_session: Optional[aiohttp.ClientSession] = None
@@ -69,7 +70,7 @@ async def mcpl_tools_execute(
     c_session = c_session or aiohttp.ClientSession()
 
     # todo: execute concurrently
-    for server in mcpl_servers():
+    for server in servers:
         execute_url = f"{server.address}/tools-execute"
         try:
             async with c_session as session:
@@ -86,8 +87,8 @@ async def mcpl_tools_execute(
                         ]
                         responses.extend(tool_res_messages)
                     else:
-                        error(f"Failed to execute tools from {server.name}: {response.status}")
+                        error(f"Failed to execute tools from {server.address}: {response.status}")
         except Exception as e:
-            exception(f"Error executing tools from {server.name}: {str(e)}")
+            exception(f"Error executing tools from {server.address}: {str(e)}")
 
     return responses

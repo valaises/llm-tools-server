@@ -215,4 +215,3 @@ class FilesRepository(AbstractRepository):
             files = await repo.get_files_by_filter("user_id = ? AND processing_status = ?", (user_id, "completed"))
         """
         return await self._run_in_thread(self.get_files_by_filter_sync, filter, params)
-

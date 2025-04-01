@@ -10,14 +10,16 @@ from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
 from chat_tools.chat_models import ChatPost, ChatMessageSystem
 from core.routers.router_auth import AuthRouter
+from core.routers.schemas import AUTH_HEADER
 from core.tools.tools import execute_tools_if_needed
+from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
 from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute
 
 
-async def compose_system_message():
+async def compose_system_message(servers):
     system = "You are a helpful AI assistant."
     # todo: use cache
-    mcp_props = await get_mcpl_tool_props()
+    mcp_props = await get_mcpl_tool_props(servers)
 
     if mcp_props:
         how_to_use_tools = '\n\n'.join([
@@ -29,23 +31,32 @@ async def compose_system_message():
 
 
 class ChatCompletionsRouter(AuthRouter):
-    def __init__(self, auth_cache):
+    def __init__(
+            self,
+            auth_cache,
+            mcpl_servers_repository: MCPLServersRepository,
+    ):
         super().__init__(auth_cache=auth_cache)
+        self._mcpl_servers_repository = mcpl_servers_repository
 
         self.add_api_route(f"/v1/chat/completions", self._chat_completions, methods=["POST"])
 
-    async def _chat_completions(self, post: ChatPost, authorization: str = Header(None)):
-        if not await self._check_auth(authorization):
+    async def _chat_completions(self, post: ChatPost, authorization = AUTH_HEADER):
+        auth = await self._check_auth(authorization)
+        if not auth:
             return self._auth_error_response()
+
+        servers = await self._mcpl_servers_repository.get_user_servers(auth.user_id)
 
         messages = post.messages
 
         if messages and messages[0].role not in ["system", "developer"]:
-            system_message = await compose_system_message()
+            system_message = await compose_system_message(servers)
             messages = [system_message, *messages]
 
         tool_res_messages = execute_tools_if_needed(messages)
-        tool_res_messages_mcpl = await mcpl_tools_execute(1, messages)
+        # todo: user_id here is hardcoded, fix it
+        tool_res_messages_mcpl = await mcpl_tools_execute(servers, 1, messages)
 
         messages = [*messages, *tool_res_messages, *tool_res_messages_mcpl]
 

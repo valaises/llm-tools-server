@@ -10,6 +10,7 @@ from core.globals import BASE_DIR
 from core.logger import init_logger, info
 from core.app import App
 from core.repositories.files_repository import FilesRepository
+from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
 
 
 class Server(uvicorn.Server):
@@ -56,11 +57,15 @@ def main():
     db_dir.mkdir(parents=True, exist_ok=True)
 
     files_repository = FilesRepository(db_dir / "files.db")
+    mcpl_repository = MCPLServersRepository(db_dir / "mcpl_servers.db")
 
     app = App(
         files_repository,
-        docs_url="/docs",
-        redoc_url=None
+        mcpl_repository,
+
+        docs_url=None,
+        redoc_url=None,
+        openapi_url="/api/v1/openapi.json"
     )
 
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

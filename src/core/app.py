@@ -3,6 +3,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
 from core.repositories.files_repository import FilesRepository
+from core.routers.router_base import BaseRouter
 from core.routers.router_caps import CapsRouter
 from core.routers.router_chat_completions import ChatCompletionsRouter
 from core.routers.router_files import FilesRouter
@@ -11,16 +12,21 @@ from core.routers.router_models import ModelsRouter
 
 __all__ = ["App"]
 
+from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
+from mcpl.routers.router_mcpl import MCPLRouter
+
 
 class App(FastAPI):
     def __init__(
             self,
             files_repository: FilesRepository,
+            mcpl_repository: MCPLServersRepository,
             *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.auth_cache = {}
         self.files_repository = files_repository
+        self.mcpl_repository = mcpl_repository
         
         self._setup_middlewares()
         self.add_event_handler("startup", self._startup_events)
@@ -43,13 +49,23 @@ class App(FastAPI):
 
     def _routers(self):
         return [
-            CapsRouter(self.auth_cache),
-            ChatCompletionsRouter(self.auth_cache),
+            BaseRouter(),
+            MCPLRouter(
+                self.auth_cache,
+                self.mcpl_repository,
+            ),
+            CapsRouter(
+                self.auth_cache,
+                self.mcpl_repository,
+            ),
+            ChatCompletionsRouter(
+                self.auth_cache,
+                self.mcpl_repository,
+            ),
             FilesRouter(
                 self.auth_cache,
                 self.files_repository,
             ),
-
             ModelsRouter()
         ]
 
