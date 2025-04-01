@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-from core.chat import get_unanswered_tool_calls
+from chat_tools.tool_usage import Tool, build_tool_call
 from chat_tools.chat_models import (
     ChatMessage,
     ChatTool,
@@ -9,7 +9,7 @@ from chat_tools.chat_models import (
     ChatMessageTool
 )
 
-from core.tools.tool_abstract import Tool, build_tool_call
+from core.chat import get_unanswered_tool_calls
 from core.tools.tool_ping_pong import ToolPingPong
 
 

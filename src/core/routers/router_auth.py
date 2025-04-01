@@ -37,21 +37,29 @@ def auth_s_left(item: CacheAuthItem):
     return CACHE_ITEM_EXPIRATION_TIME - (time.time() - item.cached_ts)
 
 
-async def fetch_auth_item(authorization: str) -> Dict[str, Any]:
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"{LLM_PROXY_ADDRESS}/auth",
-                               headers={"Authorization": authorization}) as response:
-            if response.status != 200:
-                text = await response.text()
-                return {"error": {"message": f"Failed to auth: {text}"}}
+async def fetch_auth_item(
+        http_session: aiohttp.ClientSession,
+        authorization: str
+) -> Dict[str, Any]:
+    async with http_session.get(f"{LLM_PROXY_ADDRESS}/auth",
+                           headers={"Authorization": authorization}) as response:
+        if response.status != 200:
+            text = await response.text()
+            return {"error": {"message": f"Failed to auth: {text}"}}
 
-            content = await response.json()
-            return content
+        content = await response.json()
+        return content
 
 
 class AuthRouter(APIRouter):
-    def __init__(self, auth_cache, *args, **kwargs):
+    def __init__(
+            self,
+            auth_cache,
+            http_session: aiohttp.ClientSession,
+            *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
+        self.http_session: aiohttp.ClientSession = http_session
         self.cache = auth_cache
 
     async def _check_auth(self, authorization: Header = None) -> Optional[AuthItem]:
@@ -70,7 +78,7 @@ class AuthRouter(APIRouter):
                 info(f"cache -> AUTH; exp:{s_left :.1f}s")
                 return item.item
 
-        a_item = await fetch_auth_item(authorization)
+        a_item = await fetch_auth_item(self.http_session, authorization)
 
         if "auth" in a_item:
             item = AuthItem(**a_item["auth"])

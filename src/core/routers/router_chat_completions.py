@@ -16,10 +16,13 @@ from mcpl.servers import get_active_servers
 from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute
 
 
-async def compose_system_message(servers):
+async def compose_system_message(
+        http_session: aiohttp.ClientSession,
+        servers
+):
     system = "You are a helpful AI assistant."
     # todo: use cache
-    mcp_props = await get_mcpl_tool_props(servers)
+    mcp_props = await get_mcpl_tool_props(http_session, servers)
 
     if mcp_props:
         how_to_use_tools = '\n\n'.join([
@@ -33,10 +36,10 @@ async def compose_system_message(servers):
 class ChatCompletionsRouter(AuthRouter):
     def __init__(
             self,
-            auth_cache,
             mcpl_servers_repository: MCPLServersRepository,
+            *args, **kwargs
     ):
-        super().__init__(auth_cache=auth_cache)
+        super().__init__(*args, **kwargs)
         self._mcpl_servers_repository = mcpl_servers_repository
 
         self.add_api_route(f"/v1/chat/completions", self._chat_completions, methods=["POST"])
@@ -56,7 +59,9 @@ class ChatCompletionsRouter(AuthRouter):
 
         tool_res_messages = execute_tools_if_needed(messages)
         # todo: user_id here is hardcoded, fix it
-        tool_res_messages_mcpl = await mcpl_tools_execute(servers, 1, messages)
+        tool_res_messages_mcpl = await mcpl_tools_execute(
+            self.http_session, servers, 1, messages
+        )
 
         messages = [*messages, *tool_res_messages, *tool_res_messages_mcpl]
 

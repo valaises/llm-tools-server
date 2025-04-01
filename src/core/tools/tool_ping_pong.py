@@ -1,5 +1,4 @@
-
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from chat_tools.chat_models import (
     ChatTool,
@@ -9,8 +8,7 @@ from chat_tools.chat_models import (
     ToolCall,
     ChatMessage
 )
-
-from .tool_abstract import Tool, build_tool_call
+from chat_tools.tool_usage import Tool, build_tool_call, ToolProps
 
 
 class ToolPingPong(Tool):
@@ -18,7 +16,7 @@ class ToolPingPong(Tool):
     def name(self) -> str:
         return "ping_pong"
 
-    def validate_tool_call_args(self, tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
+    def validate_tool_call_args(self, ctx: Any, tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         message = args.get("message")
 
         if not isinstance(message, str):
@@ -29,7 +27,7 @@ class ToolPingPong(Tool):
 
         return True, []
 
-    def execute(self, tool_call: ToolCall, _args: Dict[str, Any]) -> (bool, List[ChatMessage]):
+    async def execute(self, ctx: Optional[Any], tool_call: ToolCall, args: Dict[str, Any]) -> (bool, List[ChatMessage]):
         return True, [build_tool_call("pong", tool_call)]
 
     def as_chat_tool(self) -> ChatTool:
@@ -50,4 +48,10 @@ class ToolPingPong(Tool):
                     required=["message"]
                 )
             )
+        )
+
+    def props(self) -> ToolProps:
+        return ToolProps(
+            tool_name=self.name,
+            depends_on=[]
         )

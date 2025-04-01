@@ -66,10 +66,10 @@ class FileUpdateResponse(BaseModel):
 class FilesRouter(AuthRouter):
     def __init__(
             self,
-            auth_cache,
-            files_repository: FilesRepository
+            files_repository: FilesRepository,
+            *args, **kwargs
     ):
-        super().__init__(auth_cache=auth_cache)
+        super().__init__(*args, **kwargs)
         self._files_repository = files_repository
 
         self.add_api_route(

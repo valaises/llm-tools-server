@@ -21,10 +21,10 @@ class ToolsResponse(BaseModel):
 class CapsRouter(AuthRouter):
     def __init__(
             self,
-            auth_cache,
             mcpl_servers_repository: MCPLServersRepository,
+            *args, **kwargs
     ):
-        super().__init__(auth_cache=auth_cache)
+        super().__init__(*args, **kwargs)
         self._mcpl_servers_repository = mcpl_servers_repository
 
         self.add_api_route(
@@ -81,7 +81,7 @@ class CapsRouter(AuthRouter):
                 return self._auth_error_response()
 
             servers = await get_active_servers(self._mcpl_servers_repository, auth.user_id)
-            mcpl_tools = await get_mcpl_tools(servers)
+            mcpl_tools = await get_mcpl_tools(self.http_session, servers)
 
             return ToolsResponse(
                 tools=[

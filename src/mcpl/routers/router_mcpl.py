@@ -30,10 +30,10 @@ class MCPLServersUpdateResponse(BaseModel):
 class MCPLRouter(AuthRouter):
     def __init__(
             self,
-            auth_cache,
-            mcpl_servers_repository: MCPLServersRepository
+            mcpl_servers_repository: MCPLServersRepository,
+            *args, **kwargs
     ):
-        super().__init__(auth_cache=auth_cache)
+        super().__init__(*args, **kwargs)
         self._mcpl_servers_repository = mcpl_servers_repository
 
         self.add_api_route(
@@ -159,7 +159,7 @@ class MCPLRouter(AuthRouter):
             mcpl_servers = [
                 MCPLServer(
                     user_id=auth.user_id,
-                    address=server.address,
+                    address=server.address if server.address.endswith("/v1") else (server.address.rstrip("/") + "/v1"),
                     is_active=server.is_active
                 ) for server in request.servers
             ]

@@ -1,3 +1,5 @@
+import asyncio
+from itertools import chain
 from typing import Optional, List
 
 import aiohttp
@@ -18,77 +20,121 @@ class ToolPropsResponse(BaseModel):
     props: List[ToolProps]
 
 
-async def get_mcpl_tools(servers: List[MCPLServer], c_session: Optional[aiohttp.ClientSession] = None) -> List[ChatTool]:
-    c_session = c_session or aiohttp.ClientSession()
+async def get_mcpl_tools(
+        c_session: aiohttp.ClientSession,
+        servers: List[MCPLServer]
+) -> List[ChatTool]:
+    """
+    Fetch chat tools from multiple MCPL servers concurrently.
 
-    tools = []
-    for server in servers:
+    Args:
+        c_session: The aiohttp ClientSession to use for requests.
+                  The caller is responsible for managing the session's lifecycle.
+        servers: List of MCPL servers to fetch tools from.
+
+    Returns:
+        A list of ChatTool objects from all servers.
+    """
+
+    async def fetch_from_server(server: MCPLServer) -> List[ChatTool]:
         tools_url = f"{server.address}/tools"
         try:
-            async with c_session as session:
-                async with session.get(tools_url) as response:
-                    if response.status == 200:
-                        server_tools_data = await response.json()
-                        server_tools = [ChatTool.model_validate(tool) for tool in server_tools_data["tools"]]
-                        tools.extend(server_tools)
-                    else:
-                        error(f"Failed to fetch tools from {server.address}: {response.status}")
+            async with c_session.get(tools_url) as response:
+                if response.status == 200:
+                    server_tools_data = await response.json()
+                    return [ChatTool.model_validate(tool) for tool in server_tools_data["tools"]]
+                else:
+                    error(f"Failed to fetch tools from {server.address}: {response.status}")
+                    return []
         except Exception as e:
             exception(f"Error fetching tools from {server.address}: {str(e)}")
+            return []
 
-    return tools
+    # Execute all requests concurrently
+    results = await asyncio.gather(*[fetch_from_server(server) for server in servers])
+
+    return list(chain.from_iterable(results))
 
 
-async def get_mcpl_tool_props(servers: List[MCPLServer], c_session: Optional[aiohttp.ClientSession] = None) -> List[ToolProps]:
-    c_session = c_session or aiohttp.ClientSession()
+async def get_mcpl_tool_props(
+        c_session: aiohttp.ClientSession,
+        servers: List[MCPLServer]
+) -> List[ToolProps]:
+    """
+    Fetch tool properties from multiple MCPL servers concurrently.
 
-    props = []
-    for server in servers:
+    Args:
+        c_session: The aiohttp ClientSession to use for requests.
+                  The caller is responsible for managing the session's lifecycle.
+        servers: List of MCPL servers to fetch tool properties from.
+
+    Returns:
+        A list of ToolProps objects from all servers.
+    """
+
+    async def fetch_from_server(server: MCPLServer) -> List[ToolProps]:
         props_url = f"{server.address}/tools-props"
         try:
-            async with c_session as session:
-                async with session.get(props_url) as response:
-                    if response.status == 200:
-                        tool_props_data = await response.json()
-                        tool_props = ToolPropsResponse.model_validate(tool_props_data)
-                        props.extend(tool_props.props)
-                    else:
-                        error(f"Failed to fetch tool props from {server.address}: {response.status}")
+            async with c_session.get(props_url) as response:
+                if response.status == 200:
+                    tool_props_data = await response.json()
+                    tool_props = ToolPropsResponse.model_validate(tool_props_data)
+                    return tool_props.props
+                else:
+                    error(f"Failed to fetch tool props from {server.address}: {response.status}")
+                    return []
         except Exception as e:
             exception(f"Error fetching tool props from {server.address}: {str(e)}")
+            return []
 
-    return props
+    # Execute all requests concurrently
+    results = await asyncio.gather(*[fetch_from_server(server) for server in servers])
+
+    return list(chain.from_iterable(results))
 
 
 async def mcpl_tools_execute(
+        c_session: aiohttp.ClientSession,
         servers: List[MCPLServer],
         user_id: int,
-        messages: List[ChatMessage],
-        c_session: Optional[aiohttp.ClientSession] = None
+        messages: List[ChatMessage]
 ) -> List[ChatMessage]:
-    responses = []
-    c_session = c_session or aiohttp.ClientSession()
+    """
+    Execute tools on multiple MCPL servers concurrently.
 
-    # todo: execute concurrently
-    for server in servers:
+    Args:
+        c_session: The aiohttp ClientSession to use for requests.
+                  The caller is responsible for managing the session's lifecycle.
+        servers: List of MCPL servers to execute tools on.
+        user_id: The user ID to associate with the tool execution.
+        messages: List of chat messages to process.
+
+    Returns:
+        A list of chat messages containing the tool responses.
+    """
+
+    async def execute_on_server(server: MCPLServer) -> List[ChatMessage]:
         execute_url = f"{server.address}/tools-execute"
         try:
-            async with c_session as session:
-                payload = {
-                    "user_id": user_id,
-                    "messages": [message.model_dump() for message in messages]
-                }
-                async with session.post(execute_url, json=payload) as response:
-                    if response.status == 200:
-                        response_data = await response.json()
-                        tool_res_messages = [
-                            model_validate_chat_message(msg)
-                            for msg in response_data["tool_res_messages"]
-                        ]
-                        responses.extend(tool_res_messages)
-                    else:
-                        error(f"Failed to execute tools from {server.address}: {response.status}")
+            payload = {
+                "user_id": user_id,
+                "messages": [message.model_dump() for message in messages]
+            }
+            async with c_session.post(execute_url, json=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    return [
+                        model_validate_chat_message(msg)
+                        for msg in response_data["tool_res_messages"]
+                    ]
+                else:
+                    error(f"Failed to execute tools from {server.address}: {response.status}")
+                    return []
         except Exception as e:
             exception(f"Error executing tools from {server.address}: {str(e)}")
+            return []
 
-    return responses
+    # Execute all requests concurrently
+    results = await asyncio.gather(*[execute_on_server(server) for server in servers])
+
+    return list(chain.from_iterable(results))
