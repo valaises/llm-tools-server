@@ -54,7 +54,7 @@ class ChatCompletionsRouter(AuthRouter):
         messages = post.messages
 
         if messages and messages[0].role not in ["system", "developer"]:
-            system_message = await compose_system_message(servers)
+            system_message = await compose_system_message(self.http_session, servers)
             messages = [system_message, *messages]
 
         tool_res_messages = execute_tools_if_needed(messages)
