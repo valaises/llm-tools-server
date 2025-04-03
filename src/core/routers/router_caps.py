@@ -3,7 +3,6 @@ from typing import List
 from fastapi import status
 from pydantic import BaseModel
 
-from chat_tools.chat_models import ChatTool
 
 from core.logger import error
 from core.routers.router_auth import AuthRouter
@@ -12,6 +11,7 @@ from core.tools.tools import get_tools_list
 from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
 from mcpl.servers import get_active_servers
 from mcpl.wrappers import get_mcpl_tools
+from openai_wrappers.types import ChatTool
 
 
 class ToolsResponse(BaseModel):

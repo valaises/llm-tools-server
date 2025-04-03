@@ -5,9 +5,9 @@ from typing import Optional, List
 import aiohttp
 from pydantic import BaseModel
 
-from chat_tools.chat_models import ChatTool, ChatMessage, model_validate_chat_message
 from core.logger import error, exception
 from mcpl.repositories.repo_mcpl_servers import MCPLServer
+from openai_wrappers.types import ChatTool, ChatMessage, model_validate_chat_message
 
 
 class ToolProps(BaseModel):

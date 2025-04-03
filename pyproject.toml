@@ -21,9 +21,11 @@ dependencies = [
 members = [
     "src/core",
     "src/mcpl",
+    "src/openai_wrappers",
 ]
 
 [tool.uv.sources]
 core = { workspace = true }
 mcpl = { workspace = true }
+openai_wrappers = { workspace = true }
 chat-tools = { git = "https://github.com/valaises/chat_tools.git" }

@@ -1,14 +1,11 @@
 from typing import List, Dict, Any, Optional
 
-from chat_tools.chat_models import (
-    ChatTool,
-    ChatToolFunction,
-    ChatToolParameters,
-    ChatToolParameterProperty,
-    ToolCall,
-    ChatMessage
+from core.tools.tool_utils import build_tool_call
+from openai_wrappers.types import (
+    ChatTool, ChatToolFunction, ChatToolParameters,
+    ChatToolParameterProperty, ToolCall, ChatMessage
 )
-from chat_tools.tool_usage import Tool, build_tool_call, ToolProps
+from chat_tools.tool_usage import Tool, ToolProps
 
 
 class ToolPingPong(Tool):

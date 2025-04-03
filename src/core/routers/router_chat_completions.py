@@ -1,19 +1,24 @@
 import json
 import time
+from copy import copy
 
 import aiohttp
 
 from fastapi.responses import StreamingResponse
 
+from core.logger import info
+from openai_wrappers.types import ChatPost, ChatMessageSystem
+
 from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
-from chat_tools.chat_models import ChatPost, ChatMessageSystem
 from core.routers.router_auth import AuthRouter
 from core.routers.schemas import AUTH_HEADER
+from core.tools.tool_context import ToolContext
 from core.tools.tools import execute_tools_if_needed
 from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository
 from mcpl.servers import get_active_servers
 from mcpl.wrappers import get_mcpl_tool_props, mcpl_tools_execute
+from openai_wrappers.utils import convert_messages_for_openai_format
 
 
 async def compose_system_message(
@@ -30,7 +35,10 @@ async def compose_system_message(
         ])
         system = f"{system}\nHow to use TOOLS:\n{how_to_use_tools}"
 
-    return ChatMessageSystem(role="system", content=system)
+    return ChatMessageSystem(
+        role="system",
+        content=system
+    )
 
 
 class ChatCompletionsRouter(AuthRouter):
@@ -49,6 +57,10 @@ class ChatCompletionsRouter(AuthRouter):
         if not auth:
             return self._auth_error_response()
 
+        tool_context = ToolContext(
+            self.http_session
+        )
+
         servers = await get_active_servers(self._mcpl_servers_repository, auth.user_id)
 
         messages = post.messages
@@ -57,19 +69,25 @@ class ChatCompletionsRouter(AuthRouter):
             system_message = await compose_system_message(self.http_session, servers)
             messages = [system_message, *messages]
 
-        tool_res_messages = execute_tools_if_needed(messages)
+        tool_res_messages = await execute_tools_if_needed(tool_context, messages)
         # todo: user_id here is hardcoded, fix it
         tool_res_messages_mcpl = await mcpl_tools_execute(
             self.http_session, servers, 1, messages
         )
+        tool_res_messages.extend(tool_res_messages_mcpl)
+        del tool_res_messages_mcpl
+        info(tool_res_messages)
 
-        messages = [*messages, *tool_res_messages, *tool_res_messages_mcpl]
+        messages = [
+            *messages,
+            *tool_res_messages
+        ]
 
         messages = limit_messages(messages)
 
         remove_trail_tool_calls(messages)
 
-        post.messages = messages
+        post.messages = convert_messages_for_openai_format(messages)
 
         async def streamer():
             prefix, postfix = "data: ", "\n\n"
@@ -83,9 +101,10 @@ class ChatCompletionsRouter(AuthRouter):
 
                     "tool_res_messages": [
                         m.model_dump()
-                        for m in [*tool_res_messages, *tool_res_messages_mcpl]
+                        for m in tool_res_messages
                     ],
                 }) + postfix
+                info(tool_res_messages)
                 tool_res_messages.clear()
 
             async with aiohttp.ClientSession() as session:

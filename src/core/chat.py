@@ -1,14 +1,13 @@
 from typing import List, Iterator
 
 from core.globals import MESSAGES_TOK_LIMIT
-from chat_tools.chat_models import (
+from openai_wrappers.types import (
     ChatMessage,
     ChatMessageSystem,
     ChatMessageTool,
     ChatMessageAssistant,
     ToolCall
 )
-
 
 def count_tokens(message: ChatMessage) -> int:
     return int(max(1, len(str(message.content))) / 4.)

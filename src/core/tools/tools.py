@@ -1,17 +1,15 @@
 import json
 from typing import List
 
-from chat_tools.tool_usage import Tool, build_tool_call
-from chat_tools.chat_models import (
-    ChatMessage,
-    ChatTool,
-    ChatMessageUser,
-    ChatMessageTool
+from chat_tools.tool_usage import Tool
+from openai_wrappers.types import (
+    ChatMessage, ChatTool, ChatMessageUser, ChatMessageTool
 )
 
 from core.chat import get_unanswered_tool_calls
+from core.tools.tool_context import ToolContext
 from core.tools.tool_ping_pong import ToolPingPong
-
+from core.tools.tool_utils import build_tool_call
 
 TOOLS: List[Tool] = [
     ToolPingPong(),
@@ -19,7 +17,7 @@ TOOLS: List[Tool] = [
 assert len({t.name for t in TOOLS}) == len(TOOLS), "TOOLS: names must be unique"
 
 
-def execute_tools_if_needed(messages: List[ChatMessage]) -> List[ChatMessageTool]:
+async def execute_tools_if_needed(tool_context: ToolContext, messages: List[ChatMessage]) -> List[ChatMessageTool]:
     """Execute pending tool calls from the chat message history.
 
     This function processes chat messages to find and execute any unanswered tool calls.
@@ -29,6 +27,7 @@ def execute_tools_if_needed(messages: List[ChatMessage]) -> List[ChatMessageTool
     3. Executing each tool call if the tool exists and arguments are valid
 
     Args:
+        tool_context
         messages (List[ChatMessage]): A list of chat messages to process
 
     Returns:
@@ -63,13 +62,13 @@ def execute_tools_if_needed(messages: List[ChatMessage]) -> List[ChatMessageTool
             ))
             continue
 
-        ok, msgs = tool.validate_tool_call_args(tool_call, args)
+        ok, msgs = tool.validate_tool_call_args(tool_context, tool_call, args)
         tool_res_messages.extend(msgs)
 
         if not ok:
             continue
 
-        _ok, msgs = tool.execute(tool_call, args)
+        _ok, msgs = await tool.execute(tool_context, tool_call, args)
         tool_res_messages.extend(msgs)
 
     return tool_res_messages
