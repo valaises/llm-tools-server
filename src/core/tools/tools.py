@@ -12,7 +12,7 @@ from core.tools.tool_ping_pong import ToolPingPong
 from core.tools.tool_utils import build_tool_call
 
 TOOLS: List[Tool] = [
-    ToolPingPong(),
+    # ToolPingPong(),
 ]
 assert len({t.name for t in TOOLS}) == len(TOOLS), "TOOLS: names must be unique"
 

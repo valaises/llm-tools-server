@@ -8,12 +8,13 @@ from pathlib import Path
 
 import aiofiles
 
+from xattr import xattr
 from fastapi import Request, status
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
 from core.globals import UPLOADS_DIR
-from core.logger import exception, error
+from core.logger import exception, error, info
 from core.repositories.files_repository import FilesRepository, FileItem
 from core.routers.router_auth import AuthRouter
 from core.routers.schemas import RESPONSES, error_constructor, ErrorResponse, AUTH_HEADER
@@ -273,7 +274,7 @@ class FilesRouter(AuthRouter):
                 status_code=500,
             )
 
-    async def _files_upload(self, request: Request, authorization = AUTH_HEADER):
+    async def _files_upload(self, request: Request, authorization=AUTH_HEADER):
         """
         Upload a file for the authenticated user.
 
@@ -328,9 +329,21 @@ class FilesRouter(AuthRouter):
         try:
             async with aiofiles.open(temp_file_path, 'wb') as f:
                 async for chunk in request.stream():
+                    info(f"writing chunk type: {type(chunk)}, length: {len(chunk)}")
                     await f.write(chunk)
 
             os.rename(temp_file_path, file_path)
+
+            try:
+                # Store user ID as metadata
+                attrs = xattr(str(file_path))
+                attrs["user.user_id"] = str(auth.user_id).encode('utf-8')
+                attrs["user.file_name_orig"] = file_name.encode('utf-8')
+
+                # # Store file role
+                # attrs["user.file_role"] = file_role.encode('utf-8')
+            except Exception as e:
+                error(f"Failed to set file metadata: {str(e)}")
 
             file_item = FileItem(
                 file_name=hashed_filename,

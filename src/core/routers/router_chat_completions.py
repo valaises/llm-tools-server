@@ -1,6 +1,5 @@
 import json
 import time
-from copy import copy
 
 import aiohttp
 
@@ -70,10 +69,11 @@ class ChatCompletionsRouter(AuthRouter):
             messages = [system_message, *messages]
 
         tool_res_messages = await execute_tools_if_needed(tool_context, messages)
-        # todo: user_id here is hardcoded, fix it
+
         tool_res_messages_mcpl = await mcpl_tools_execute(
-            self.http_session, servers, 1, messages
+            self.http_session, servers, auth.user_id, messages
         )
+
         tool_res_messages.extend(tool_res_messages_mcpl)
         del tool_res_messages_mcpl
         info(tool_res_messages)
