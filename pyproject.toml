@@ -13,6 +13,7 @@ dependencies = [
     "requests>=2.32.3",
     "scalar-fastapi>=1.0.3",
     "termcolor>=2.5.0",
+    "ujson>=5.10.0",
     "uvicorn>=0.34.0",
     "uvloop>=0.21.0",
 ]

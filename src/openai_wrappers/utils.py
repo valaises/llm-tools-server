@@ -1,3 +1,4 @@
+import ujson as json
 from typing import List
 
 from openai_wrappers.types import ChatMessage, ChatMessageContentItemDocSearch, ChatMessageContentItemText
@@ -25,7 +26,10 @@ def convert_messages_for_openai_format(messages: List[ChatMessage]) -> List[Chat
             for c in message.content:
                 if isinstance(c, ChatMessageContentItemDocSearch):
                     new_content.append(ChatMessageContentItemText(
-                        text=c.text,
+                        text=json.dumps({
+                            "text": c.text,
+                            "id": c.paragraph_id,
+                        }),
                         type="text"
                     ))
                 else:
