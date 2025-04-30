@@ -3,7 +3,7 @@ import time
 
 import aiohttp
 
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from core.logger import info
 from openai_wrappers.types import ChatPost, ChatMessageSystem
@@ -88,6 +88,23 @@ class ChatCompletionsRouter(AuthRouter):
         remove_trail_tool_calls(messages)
 
         post.messages = convert_messages_for_openai_format(messages)
+
+        if post.stream is False:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                        f"{LLM_PROXY_ADDRESS}/chat/completions",
+                        json=post.model_dump(),
+                        headers={"Authorization": authorization or ""}
+                ) as response:
+                    response_data = await response.json()
+
+                    # If we have tool_res_messages, add them to the response
+                    if len(tool_res_messages):
+                        response_data["tool_res_messages"] = [
+                            m.model_dump() for m in tool_res_messages
+                        ]
+
+                    return JSONResponse(content=response_data)
 
         async def streamer():
             prefix, postfix = "data: ", "\n\n"
