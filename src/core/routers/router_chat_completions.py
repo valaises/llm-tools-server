@@ -3,7 +3,7 @@ import time
 
 import aiohttp
 
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 
 from core.logger import info
 from openai_wrappers.types import ChatPost, ChatMessageSystem
@@ -40,6 +40,60 @@ async def compose_system_message(
     )
 
 
+async def proxy_stream_response(http_session, post, authorization, tool_res_messages):
+    prefix, postfix = "data: ", "\n\n"
+    if len(tool_res_messages):
+        yield prefix + json.dumps({
+            "id": "XXX",
+            "object": "tool_res_messages",
+            "created": time.time(),
+            "model": post.model,
+            "choices": [],
+            "tool_res_messages": [
+                m.model_dump()
+                for m in tool_res_messages
+            ],
+        }) + postfix
+        info(tool_res_messages)
+
+    async with http_session.post(
+            f"{LLM_PROXY_ADDRESS}/chat/completions",
+            json=post.model_dump(),
+            headers={"Authorization": authorization or ""}
+    ) as response:
+        async for chunk in response.content:
+            if chunk:
+                yield chunk
+
+
+async def proxy_non_stream_response(http_session, post, authorization, tool_res_messages):
+    # Make a non-streaming request to the proxy
+    post_data = post.model_dump()
+    post_data["stream"] = False  # Ensure stream is set to False
+
+    async with http_session.post(
+            f"{LLM_PROXY_ADDRESS}/chat/completions",
+            json=post_data,
+            headers={"Authorization": authorization or ""}
+    ) as response:
+        # Get the complete response as text
+        response_text = await response.text()
+
+        # Parse the response
+        try:
+            response_data = json.loads(response_text)
+
+            # Add tool_res_messages if any
+            if len(tool_res_messages):
+                response_data["tool_res_messages"] = [
+                    m.model_dump() for m in tool_res_messages
+                ]
+
+            yield json.dumps(response_data)
+        except json.JSONDecodeError:
+            yield json.dumps({"error": "Failed to parse response from LLM proxy"})
+
+
 class ChatCompletionsRouter(AuthRouter):
     def __init__(
             self,
@@ -51,7 +105,7 @@ class ChatCompletionsRouter(AuthRouter):
 
         self.add_api_route(f"/v1/chat/completions", self._chat_completions, methods=["POST"])
 
-    async def _chat_completions(self, post: ChatPost, authorization = AUTH_HEADER):
+    async def _chat_completions(self, post: ChatPost, authorization=AUTH_HEADER):
         auth = await self._check_auth(authorization)
         if not auth:
             return self._auth_error_response()
@@ -89,49 +143,13 @@ class ChatCompletionsRouter(AuthRouter):
 
         post.messages = convert_messages_for_openai_format(messages)
 
-        if post.stream is False:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        f"{LLM_PROXY_ADDRESS}/chat/completions",
-                        json=post.model_dump(),
-                        headers={"Authorization": authorization or ""}
-                ) as response:
-                    response_data = await response.json()
+        # Choose the appropriate response generator based on stream parameter
+        response_generator = proxy_stream_response(
+            self.http_session, post, authorization, tool_res_messages
+        ) if post.stream else proxy_non_stream_response(
+            self.http_session, post, authorization, tool_res_messages
+        )
 
-                    # If we have tool_res_messages, add them to the response
-                    if len(tool_res_messages):
-                        response_data["tool_res_messages"] = [
-                            m.model_dump() for m in tool_res_messages
-                        ]
-
-                    return JSONResponse(content=response_data)
-
-        async def streamer():
-            prefix, postfix = "data: ", "\n\n"
-            if len(tool_res_messages):
-                yield prefix + json.dumps({
-                    "id": "XXX",
-                    "object": "tool_res_messages",
-                    "created": time.time(),
-                    "model": post.model,
-                    "choices": [],
-
-                    "tool_res_messages": [
-                        m.model_dump()
-                        for m in tool_res_messages
-                    ],
-                }) + postfix
-                info(tool_res_messages)
-                tool_res_messages.clear()
-
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        f"{LLM_PROXY_ADDRESS}/chat/completions",
-                        json=post.model_dump(),
-                        headers={"Authorization": authorization or ""}
-                ) as response:
-                    async for chunk in response.content:
-                        if chunk:
-                            yield chunk
-
-        return StreamingResponse(streamer(), media_type="text/event-stream")
+        # Return the appropriate response type
+        media_type = "text/event-stream" if post.stream else "application/json"
+        return StreamingResponse(response_generator, media_type=media_type)
