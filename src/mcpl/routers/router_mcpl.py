@@ -1,6 +1,8 @@
+from collections import Counter
+
 from fastapi import status
 from typing import List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from core.globals import DEFAULT_MCPL_SERVERS
 from core.logger import error, exception
@@ -20,6 +22,16 @@ class MCPLServersListResponse(BaseModel):
 
 class MCPLServersUpdateRequest(BaseModel):
     servers: List[MCPLServerItem] = Field(..., description="List of MCPL servers to save")
+
+    @validator('servers')
+    def validate_unique_addresses(cls, servers):
+        addresses = [server.address for server in servers]
+        duplicates = [addr for addr, count in Counter(addresses).items() if count > 1]
+
+        if duplicates:
+            raise ValueError(f"Server addresses must be unique. Duplicates found: {', '.join(duplicates)}")
+
+        return servers
 
 
 class MCPLServersUpdateResponse(BaseModel):
