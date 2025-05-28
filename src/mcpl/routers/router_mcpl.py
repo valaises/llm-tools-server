@@ -2,6 +2,7 @@ from fastapi import status
 from typing import List
 from pydantic import BaseModel, Field
 
+from core.globals import DEFAULT_MCPL_SERVERS
 from core.logger import error, exception
 from mcpl.repositories.repo_mcpl_servers import MCPLServersRepository, MCPLServer
 from core.routers.router_auth import AuthRouter
@@ -119,6 +120,10 @@ class MCPLRouter(AuthRouter):
                 return self._auth_error_response()
 
             servers = await self._mcpl_servers_repository.get_user_servers(auth.user_id)
+            default_servers = [
+                MCPLServer(user_id=-1, address=s, is_active=True) for s in DEFAULT_MCPL_SERVERS
+            ]
+            servers.extend(default_servers)
 
             return MCPLServersListResponse(
                 servers=[MCPLServerItem(address=s.address, is_active=s.is_active) for s in servers]
