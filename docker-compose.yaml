@@ -1,14 +1,20 @@
 
 services:
-  app:
+  llm-tools-server:
     build: .
-    container_name: "llm_tools"
-    env_file:
-      - .env
+    container_name: llm_tools
+    environment:
+      - LLM_PROXY_ADDRESS=http://llm-proxy:7012/v1
+      - DEFAULT_MCPL_SERVERS=[]
     ports:
       - "7016:7016"
     volumes:
-      - ./db:/app/db
-      - ./logs:/app/logs
-      - ./uploads:/app/uploads
+      - ./logs/llm-tools:/app/logs
+      - llm-tool-db-volume:/app/db
+      - shared-files-volume:/app/uploads
     restart: unless-stopped
+
+volumes:
+  llm-tool-db-volume:
+  shared-files-volume:
+

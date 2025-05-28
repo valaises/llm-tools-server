@@ -8,7 +8,6 @@ from fastapi.responses import StreamingResponse
 from core.logger import info
 from openai_wrappers.types import ChatPost, ChatMessageSystem
 
-from core.chat import limit_messages, remove_trail_tool_calls
 from core.globals import LLM_PROXY_ADDRESS
 from core.routers.router_auth import AuthRouter
 from core.routers.schemas import AUTH_HEADER
@@ -136,10 +135,6 @@ class ChatCompletionsRouter(AuthRouter):
             *messages,
             *tool_res_messages
         ]
-
-        messages = limit_messages(messages)
-
-        remove_trail_tool_calls(messages)
 
         post.messages = convert_messages_for_openai_format(messages)
 

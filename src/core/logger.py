@@ -5,19 +5,40 @@ from datetime import datetime
 from pathlib import Path
 from termcolor import colored
 
-from core.globals import BASE_DIR
+from core.globals import LOGS_DIR
 
 __all__ = ['init_logger', 'info', 'error', 'warn', 'debug', 'exception']
 
-logger = logging.getLogger("SBACK")
-info = logger.info
-error = logger.error
-warn = logger.warning
-debug = logger.debug
-exception = logger.exception
 
-FMT = '%(asctime)s %(levelname)s [%(filename)s] %(message)s'
+logger = logging.getLogger("LLMP")
+
+
+def info(msg, *args, **kwargs):
+    logger.info(msg, *args, **kwargs, stacklevel=2)
+
+def error(msg, *args, **kwargs):
+    logger.error(msg, *args, **kwargs, stacklevel=2)
+
+def warn(msg, *args, **kwargs):
+    logger.warning(msg, *args, **kwargs, stacklevel=2)
+
+def debug(msg, *args, **kwargs):
+    logger.debug(msg, *args, **kwargs, stacklevel=2)
+
+def exception(msg, *args, **kwargs):
+    logger.exception(msg, *args, **kwargs, stacklevel=2)
+
+
+FMT = '%(asctime)s %(levelname)s [%(filename)s:%(lineno)d %(funcName)s] %(message)s'
 DATE_FMT = '%Y%m%d %H:%M:%S'
+
+
+# List of filenames to exclude from logging
+EXCLUDED_FILENAMES = [
+    '_base_client.py',
+    '_trace.py',
+    'inotify_buffer.py',
+]
 
 
 def init_logger(debug_on: bool) -> None:
@@ -26,6 +47,11 @@ def init_logger(debug_on: bool) -> None:
     Args:
         debug_on: Whether to enable debug logging
     """
+
+    class ExcludeFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            # Return False to exclude the record from logging
+            return record.filename not in EXCLUDED_FILENAMES
 
     class ColoredConsoleHandler(logging.Handler):
         def emit(self, record: logging.LogRecord) -> None:
@@ -54,8 +80,7 @@ def init_logger(debug_on: bool) -> None:
             sys.stderr.write(f"{log_entry}\n")
             sys.stderr.flush()
 
-    log_path = BASE_DIR / "logs"
-    log_path.mkdir(parents=True, exist_ok=True)
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     class DailyFileHandler(logging.Handler):
         def __init__(self, log_dir, encoding='utf-8'):
@@ -91,15 +116,22 @@ def init_logger(debug_on: bool) -> None:
             if self.file_handler:
                 self.file_handler.setFormatter(formatter)
 
-    file_handler = DailyFileHandler(log_path, encoding="utf-8")
+    file_handler = DailyFileHandler(LOGS_DIR, encoding="utf-8")
 
     file_handler.setFormatter(logging.Formatter(
         FMT, DATE_FMT
     ))
 
+    console_handler = ColoredConsoleHandler()
+
+    # Add the exclude filter to both handlers
+    exclude_filter = ExcludeFilter()
+    console_handler.addFilter(exclude_filter)
+    file_handler.addFilter(exclude_filter)
+
     logging.basicConfig(
         level=logging.DEBUG if debug_on else logging.INFO,
         format=FMT,
         datefmt=DATE_FMT,
-        handlers=[ColoredConsoleHandler(), file_handler]
+        handlers=[console_handler, file_handler]
     )
